@@ -1,3 +1,4 @@
 ---
 is_debug: true
+token: your_token_from_botFather
 timeout: 60
