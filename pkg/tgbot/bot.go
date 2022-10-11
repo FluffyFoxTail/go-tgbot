@@ -5,17 +5,20 @@ import (
 	"fmt"
 	"tgbot/internal/config"
 	"tgbot/internal/logging"
+	"tgbot/pkg/tgbot/handlers"
+	"tgbot/pkg/utils"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 type Bot struct {
-	api    *tgbotapi.BotAPI
-	logger *logging.BotLogger
-	config *config.Config
+	api      *tgbotapi.BotAPI
+	logger   *logging.BotLogger
+	config   *config.Config
+	services map[string]handlers.Handler
 }
 
-func NewBot(config *config.Config, logger *logging.BotLogger) (*Bot, error) {
+func NewBot(config *config.Config, logger *logging.BotLogger, services map[string]handlers.Handler) (*Bot, error) {
 	api, err := tgbotapi.NewBotAPI(config.Token)
 	if err != nil {
 		return nil, fmt.Errorf("Unnable to connect TG: %w", err)
@@ -32,7 +35,7 @@ func NewBot(config *config.Config, logger *logging.BotLogger) (*Bot, error) {
 	}
 
 	logger.Info(fmt.Sprintf("Log in on: %s", api.Self.UserName))
-	return &Bot{api: api, config: config, logger: logger}, nil
+	return &Bot{api: api, config: config, logger: logger, services: services}, nil
 }
 
 func (b *Bot) Start(ctx context.Context) {
@@ -54,16 +57,18 @@ func (b *Bot) listen(ctx context.Context, updates tgbotapi.UpdatesChannel) {
 			}
 
 			if !u.Message.IsCommand() {
-				b.reply(u.Message.Chat.ID, u.Message.MessageID, "ыыыы: "+u.Message.Text)
+				b.reply(u.Message.Chat.ID, u.Message.MessageID, "just reply: "+u.Message.Text)
 				continue
 			}
 
-			switch u.Message.Command() {
-			case "hello":
-				go b.hello(u.Message)
-			case "help":
-				go b.help(u.Message)
-			default:
+			// TODO match a service and set of it`s commands
+			if utils.Contains([]string{"hello", "help"}, u.Message.Command()) {
+				answer, err := b.services["greeting"].HandleMsg(u.Message.Command(), []string{})
+				if err != nil {
+					b.logger.Error(err.Error())
+				}
+				go b.reply(u.Message.Chat.ID, u.Message.MessageID, answer)
+			} else {
 				go b.reply(u.Message.Chat.ID, 0, "I dont now this command")
 			}
 		}
@@ -72,15 +77,6 @@ func (b *Bot) listen(ctx context.Context, updates tgbotapi.UpdatesChannel) {
 
 func (b *Bot) Stop() {
 	b.api.StopReceivingUpdates()
-}
-
-// TODO implement in config method get for commands
-func (b *Bot) hello(msg *tgbotapi.Message) {
-	b.reply(msg.Chat.ID, msg.MessageID, "hello!!!!")
-}
-
-func (b *Bot) help(msg *tgbotapi.Message) {
-	b.reply(msg.Chat.ID, msg.MessageID, "i`m just learning now!")
 }
 
 func (b *Bot) reply(chatId int64, msgID int, text string) {

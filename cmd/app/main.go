@@ -7,8 +7,10 @@ import (
 	"os/signal"
 	"syscall"
 	"tgbot/internal/config"
+	"tgbot/internal/greeting"
 	"tgbot/internal/logging"
 	"tgbot/pkg/tgbot"
+	"tgbot/pkg/tgbot/handlers"
 )
 
 // TODO REPLACE panic to beaty message
@@ -20,7 +22,11 @@ func main() {
 		panic(err)
 	}
 
-	bot, err := tgbot.NewBot(cfg, logger)
+	fmt.Printf("%+v", cfg)
+	greetingService := greeting.NewHandler(cfg.Commands)
+	botServices := map[string]handlers.Handler{"greeting": greetingService}
+
+	bot, err := tgbot.NewBot(cfg, logger, botServices)
 	if err != nil {
 		panic(err)
 	}
