@@ -1,4 +1,10 @@
 ---
 is_debug: true
-token: your_token_from_botFather
+token:  your_token_from_botFather
 timeout: 60
+
+commands:
+  - key: 'hello'
+    message: 'QQ!'
+  - key: 'help'
+    message: 'Help message!'

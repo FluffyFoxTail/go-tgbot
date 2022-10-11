@@ -1,6 +1,8 @@
 package config
 
 import (
+	"errors"
+	"fmt"
 	"sync"
 	"tgbot/internal/logging"
 
@@ -8,9 +10,17 @@ import (
 )
 
 type Config struct {
-	IsDebug bool   `yaml:"is_debug"`
-	Token   string `yaml:"token" evn:"TGTOKEN"`
-	Timeout int    `yaml:"timeout"`
+	IsDebug  bool         `yml:"is_debug"`
+	Token    string       `yml:"token" evn:"TGTOKEN"`
+	Timeout  int          `yml:"timeout"`
+	Commands CommandsList `yml:"commands"`
+}
+
+type CommandsList []Command
+
+type Command struct {
+	Key     string `yml:"key"`
+	Message string `yml:"message"`
 }
 
 var instance *Config
@@ -28,4 +38,13 @@ func GetConfig(logger *logging.BotLogger) (*Config, error) {
 		}
 	})
 	return instance, nil
+}
+
+func (cl CommandsList) GetAnswer(key string) (string, error) {
+	for _, command := range cl {
+		if command.Key == key {
+			return command.Message, nil
+		}
+	}
+	return "", errors.New(fmt.Sprintf("Such command not found: %s", key))
 }
